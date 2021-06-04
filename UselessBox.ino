@@ -6,14 +6,21 @@
 #define BLUE_LED        2 // D4
 
 #define PUSHED          LOW
-#define ENDPOS          55
-#define SERVO_STANDBY   170
+#define ENDPOS          20
+#define SERVO_STANDBY   160
 
 #define CMD_READ        1
 #define CMD_WRITE       2
 #define CMD_MODE        3
 #define CMD_SERVO       4
 
+
+#define SCENARIO_INIT        -1
+#define SCENARIO_0            0
+#define SCENARIO_1            1
+#define SCENARIO_2            2
+#define SCENARIO_3            3
+#define SCENARIO_4            4
 #define MAX_SCENARIO          4
 
 #define STATE_STANDBY         0
@@ -28,7 +35,7 @@ int btnLock = 0;
 int state = STATE_STANDBY;
 int scenarioStep = 0;
 int pos = SERVO_STANDBY;
-int scenario = -1;
+int scenario = SCENARIO_INIT;
 
 unsigned long timeout = millis() + TIMEOUT;
 int stateMain = STATE_STANDBY;
@@ -38,6 +45,8 @@ int inDiagnosis = 0;
 
 void setup() {
   Serial.begin(115200);
+  randomSeed(analogRead(A0));
+  randomSeed(analogRead(A0));
   // flush serial line
   while(Serial.available() > 0) {
     char t = Serial.read();
@@ -51,6 +60,10 @@ void setup() {
   digitalWrite(RELAY, 1);       // set the relay as a latch
   Serial.println("Setup completed");
   delay(50);
+  if(!isPushed()){
+    inDiagnosis = 1;
+    Serial.println("In diagnosis.");
+  }
 }
 
 void scenarioStepMoveToContact(int delayscenarioStep){
@@ -146,22 +159,27 @@ void stateStandby(){
 
 void selectScenario(){
   if(scenario >= MAX_SCENARIO) scenario = 0;
-  else scenario++; 
+  else scenario++;
+  long r = random(10, 50);
+//  for(int i = 0;i<(int)r;i++)
+//    scenario = random(0, MAX_SCENARIO+1);
+//scenario = 0;
   Serial.print("Current scenario: ");
   Serial.println(scenario);
 //scenario = 3;
   stateMain = STATE_RUN_SCENARIO;
+  scenarioStep = 0;
 }
 
 void runScenario(){
-  if(scenario == 0) scenario_01(10);
-  else if(scenario == 1) scenario_01(5);
-  else if(scenario == 2) scenario_02();
-  else if(scenario == 3) scenario_03();
-  else if(scenario == 4) scenario_04();
+  if(scenario == SCENARIO_0) scenario_01(5);
+  else if(scenario == SCENARIO_1) scenario_01(15);
+  else if(scenario == SCENARIO_2) scenario_02();
+  else if(scenario == SCENARIO_3) scenario_03();
+  else if(scenario == SCENARIO_4) scenario_04();
   else{
     stateMain = STATE_STANDBY;
-    scenario = 0;
+    scenario = SCENARIO_0;
   }
 }
 
@@ -195,7 +213,7 @@ void scenario_02(){
   switch(scenarioStep){
     case 0:
     default:
-      scenarioStepMoveToPosition(150, 5);
+      scenarioStepMoveToPosition(140, 15);
       countdown = millis()+1500; // for next scenarioStep
       break;
     case 1:
@@ -205,7 +223,7 @@ void scenario_02(){
       scenarioStepMoveToContact(5);
       break;
     case 3:
-      scenarioStepMoveBackStandby(15);
+      scenarioStepMoveBackStandby(5);
       break;
     case 4:
       stateMain = STATE_STANDBY;
@@ -222,7 +240,7 @@ void scenario_03(){
       scenarioStepMoveToContact(5);
       break;
     case 1:
-      scenarioStepMoveToPosition(150, 5);
+      scenarioStepMoveToPosition(140, 5);
       countdown = millis()+5000; // for next scenarioStep
       break;
     case 2:
@@ -246,25 +264,25 @@ void scenario_04(){
   switch(scenarioStep){
     case 0:
     default:
-      scenarioStepMoveToPosition(150, 5);
+      scenarioStepMoveToPosition(140, 5);
       break;
     case 1:
       scenarioStepMoveToPosition(120, 5);
       break;
     case 2:
-      scenarioStepMoveToPosition(150, 5);
+      scenarioStepMoveToPosition(140, 5);
       break;
     case 3:
       scenarioStepMoveToPosition(120, 5);
       break;
     case 4:
-      scenarioStepMoveToPosition(150, 5);
+      scenarioStepMoveToPosition(140, 5);
       break;
     case 5:
       scenarioStepMoveToPosition(120, 5);
       break;
     case 6:
-      scenarioStepMoveToPosition(150, 5);
+      scenarioStepMoveToPosition(140, 5);
       break;
     case 7:
       scenarioStepMoveToPosition(120, 5);
@@ -288,7 +306,6 @@ void scenario_04(){
 
 /* Test useless box components */
 void test(){
-  //delay(100);
   // if there's any serial available, read it:
   while (Serial.available() > 0) {
     
@@ -338,6 +355,7 @@ void test(){
 }
 
 void loop() {
+  /* Check if serial data available and go in diagnosis mode */
   test();
 
   if(!inDiagnosis){
